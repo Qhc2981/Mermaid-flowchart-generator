@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mermaid 魔法繪圖板 (Fixed)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Nunito"', '"Noto Sans TC"', 'sans-serif'],
+                        mono: ['"Fira Code"', 'monospace'],
+                    },
+                    colors: {
+                        'brand-yellow': '#FFD93D',
+                        'brand-blue': '#4D96FF',
+                        'brand-green': '#6BCB77',
+                        'brand-red': '#FF6B6B',
+                        'brand-bg': '#F0F4F8'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #F0F4F8;
+            background-image: radial-gradient(#E2E8F0 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+            border-radius: 5px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 5px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+
+        .preview-pattern {
+            background-image: linear-gradient(rgba(77, 150, 255, 0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(77, 150, 255, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .btn-bounce:active {
+            transform: scale(0.95);
+        }
+
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4D96FF;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 修正縮放時的容器行為 */
+        #graphDiv {
+            transform-origin: center center; 
+            /* 預設置中，但在縮放邏輯中會動態調整 */
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden text-gray-700">
+
+    <!-- Header -->
+    <header class="bg-white shadow-md z-10 p-4 flex justify-between items-center border-b-4 border-brand-blue">
+        <div class="flex items-center gap-3">
+            <div class="bg-brand-blue text-white p-2 rounded-lg text-2xl shadow-lg">
+                <i class="fa-solid fa-shapes"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800 tracking-wide">Mermaid <span class="text-brand-blue">魔法繪圖板</span></h1>
+                <p class="text-xs text-gray-500 font-bold">簡單、快速、色彩豐富的流程圖工具</p>
+            </div>
+        </div>
+        
+        <div class="flex gap-2">
+            <button onclick="loadSample('flowchart')" class="hidden md:flex items-center gap-2 px-4 py-2 bg-brand-yellow text-gray-800 rounded-full font-bold shadow-sm hover:bg-yellow-300 transition btn-bounce">
+                <i class="fa-solid fa-lightbulb"></i> 流程圖範例
+            </button>
+            <button onclick="loadSample('sequence')" class="hidden md:flex items-center gap-2 px-4 py-2 bg-brand-green text-white rounded-full font-bold shadow-sm hover:bg-green-500 transition btn-bounce">
+                <i class="fa-solid fa-comments"></i> 時序圖範例
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col md:flex-row overflow-hidden">
+        
+        <!-- Left Panel: Editor -->
+        <section class="w-full md:w-2/5 flex flex-col bg-white border-r border-gray-200 shadow-xl z-0">
+            <!-- Toolbar -->
+            <div class="p-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center flex-wrap gap-2">
+                <span class="font-bold text-gray-600"><i class="fa-solid fa-code text-brand-blue mr-2"></i>語法編輯區</span>
+                <div class="flex gap-2">
+                    <label for="fileInput" class="cursor-pointer px-3 py-1.5 bg-white border-2 border-brand-blue text-brand-blue rounded-lg font-bold hover:bg-blue-50 transition text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-upload"></i> 上傳檔案
+                    </label>
+                    <input type="file" id="fileInput" accept=".txt,.mmd,.md" class="hidden">
+                    
+                    <button id="copyBtn" class="px-3 py-1.5 bg-white border-2 border-gray-300 text-gray-600 rounded-lg font-bold hover:bg-gray-100 transition text-sm" title="複製語法">
+                        <i class="fa-regular fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Text Area -->
+            <div class="flex-1 relative group">
+                <div id="systemLoading" class="absolute top-0 left-0 right-0 bg-yellow-100 text-yellow-800 text-xs py-1 px-2 text-center z-10 transition-opacity duration-500">
+                    <i class="fa-solid fa-circle-notch fa-spin mr-1"></i> 系統元件載入中... 請稍候
+                </div>
+
+                <textarea id="codeEditor" class="w-full h-full p-4 font-mono text-base md:text-lg resize-none focus:outline-none focus:bg-blue-50 transition pt-8" spellcheck="false" placeholder="在此貼上 Mermaid 語法..."></textarea>
+            </div>
+            
+            <!-- Error Log -->
+            <div id="errorContainer" class="hidden bg-brand-red text-white p-3 text-sm font-bold animate-pulse">
+                <i class="fa-solid fa-triangle-exclamation mr-2"></i> <span id="errorMsg">語法錯誤</span>
+            </div>
+        </section>
+
+        <!-- Right Panel: Preview -->
+        <section class="w-full md:w-3/5 flex flex-col relative bg-gray-50">
+            <!-- Preview Toolbar -->
+            <div class="absolute top-4 right-4 z-20 flex flex-col gap-2">
+                <div class="bg-white p-1 rounded-xl shadow-lg border border-gray-200 flex flex-col items-center">
+                    <button onclick="adjustZoom(0.1)" class="p-2 hover:text-brand-blue transition" title="放大"><i class="fa-solid fa-magnifying-glass-plus fa-lg"></i></button>
+                    <button onclick="resetZoom()" class="p-2 hover:text-brand-blue transition" title="還原"><i class="fa-solid fa-compress fa-lg"></i></button>
+                    <button onclick="adjustZoom(-0.1)" class="p-2 hover:text-brand-blue transition" title="縮小"><i class="fa-solid fa-magnifying-glass-minus fa-lg"></i></button>
+                </div>
+                
+                <button onclick="downloadPNG()" class="bg-brand-blue text-white p-3 rounded-xl shadow-lg hover:bg-blue-600 transition btn-bounce flex flex-col items-center justify-center font-bold">
+                    <i class="fa-solid fa-download text-xl mb-1"></i>
+                    <span class="text-xs">PNG</span>
+                </button>
+            </div>
+
+            <div class="absolute top-4 left-4 z-20 bg-white/80 backdrop-blur px-3 py-1 rounded-full text-sm font-bold text-gray-500 border border-gray-200 pointer-events-none">
+                <i class="fa-solid fa-eye mr-1 text-brand-green"></i> 即時預覽 (可拖曳/滾輪縮放)
+            </div>
+
+            <!-- Canvas Container -->
+            <!-- 修正：移除 overflow-auto 改為 overflow-hidden，加入 cursor-grab 以支援滑鼠拖曳 -->
+            <div class="flex-1 overflow-hidden preview-pattern flex items-center justify-center p-8 cursor-grab" id="previewContainer">
+                <!-- 修正：移除 transition-transform 避免拖曳時遲滯 -->
+                <div id="graphDiv" class=""></div>
+            </div>
+            
+            <div id="loading" class="hidden absolute inset-0 bg-white/50 backdrop-blur-sm flex items-center justify-center z-30">
+                <div class="loader"></div>
+            </div>
+        </section>
+    </main>
+
+    <canvas id="exportCanvas" class="hidden"></canvas>
+
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+
+        mermaid.initialize({ 
+            startOnLoad: false, 
+            theme: 'base',
+            securityLevel: 'loose',
+            themeVariables: {
+                primaryColor: '#ffffff',
+                primaryTextColor: '#000000',
+                primaryBorderColor: '#000000',
+                lineColor: '#000000',
+                secondaryColor: '#f4f4f4',
+                tertiaryColor: '#ffffff',
+                fontFamily: 'Nunito, "Noto Sans TC", sans-serif',
+                fontSize: '18px' 
+            },
+            flowchart: { curve: 'basis', htmlLabels: true },
+        });
+
+        window.mermaid = mermaid; 
+        if (window.onMermaidLoaded) {
+            window.onMermaidLoaded();
+        }
+    </script>
+
+    <script>
+        const editor = document.getElementById('codeEditor');
+        const graphDiv = document.getElementById('graphDiv');
+        const previewContainer = document.getElementById('previewContainer');
+        const errorContainer = document.getElementById('errorContainer');
+        const errorMsg = document.getElementById('errorMsg');
+        const fileInput = document.getElementById('fileInput');
+        const loading = document.getElementById('loading');
+        const systemLoading = document.getElementById('systemLoading');
+
+        // Zoom & Pan Variables
+        let currentZoom = 1;
+        let isPanning = false;
+        let startX = 0;
+        let startY = 0;
+        let translateX = 0;
+        let translateY = 0;
+
+        let renderTimeout;
+
+        const defaultCode = `graph TD
+    A[開始學習] --> B{心情如何?}
+    B -->|開心| C[繼續保持!]
+    B -->|疲累| D[休息一下]
+    C --> E[完成作業]
+    D --> E
+    E --> F((結束))`;
+
+        window.onMermaidLoaded = function() {
+            if(systemLoading) {
+                systemLoading.classList.add('opacity-0');
+                setTimeout(() => systemLoading.remove(), 500);
+            }
+            renderDiagram();
+        };
+
+        window.addEventListener('load', () => {
+            editor.value = defaultCode;
+            if (window.mermaid) {
+                window.onMermaidLoaded();
+            }
+        });
+
+        editor.addEventListener('input', () => {
+            showLoading(true);
+            clearTimeout(renderTimeout);
+            renderTimeout = setTimeout(() => {
+                renderDiagram();
+            }, 600);
+        });
+
+        fileInput.addEventListener('change', handleFileUpload);
+        
+        document.getElementById('copyBtn').addEventListener('click', () => {
+            editor.select();
+            document.execCommand('copy');
+            const originalIcon = document.getElementById('copyBtn').innerHTML;
+            document.getElementById('copyBtn').innerHTML = '<i class="fa-solid fa-check text-green-600"></i>';
+            setTimeout(() => {
+                document.getElementById('copyBtn').innerHTML = originalIcon;
+            }, 1500);
+        });
+
+        // ---------------- Pan & Zoom Event Listeners ----------------
+
+        // 1. Mouse Wheel Zoom
+        previewContainer.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            // 決定縮放方向
+            const delta = e.deltaY > 0 ? -0.1 : 0.1;
+            adjustZoom(delta);
+        });
+
+        // 2. Mouse Drag Pan
+        previewContainer.addEventListener('mousedown', (e) => {
+            // 只允許左鍵 (button 0)
+            if (e.button !== 0) return;
+            
+            isPanning = true;
+            // 計算起始點相對於目前 translate 的位置
+            startX = e.clientX - translateX;
+            startY = e.clientY - translateY;
+            
+            previewContainer.style.cursor = 'grabbing';
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isPanning) return;
+            e.preventDefault();
+            
+            // 計算新的位移
+            translateX = e.clientX - startX;
+            translateY = e.clientY - startY;
+            
+            updateTransform();
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isPanning) {
+                isPanning = false;
+                previewContainer.style.cursor = 'grab';
+            }
+        });
+
+        // ---------------- Functions ----------------
+
+        async function renderDiagram() {
+            if (!window.mermaid) return;
+
+            const code = editor.value.trim();
+            if (!code) {
+                graphDiv.innerHTML = '';
+                showLoading(false);
+                return;
+            }
+
+            try {
+                const isValid = await window.mermaid.parse(code).then(() => true).catch(e => { throw e; });
+
+                if (isValid) {
+                    errorContainer.classList.add('hidden');
+                    const id = 'mermaid-' + Math.round(Math.random() * 10000);
+                    
+                    const { svg } = await window.mermaid.render(id, code);
+                    graphDiv.innerHTML = svg;
+                    
+                    const svgElement = graphDiv.querySelector('svg');
+                    if(svgElement) {
+                        svgElement.style.height = 'auto';
+                        svgElement.style.maxWidth = '100%';
+                        svgElement.style.color = 'black'; 
+                    }
+                }
+            } catch (error) {
+                console.error(error);
+                errorContainer.classList.remove('hidden');
+                let msg = error.message || "語法有誤，請檢查拼字或括號";
+                if(msg.includes('str.startsWith')) msg = "語法結構錯誤";
+                if(msg.length > 100) msg = msg.substring(0, 100) + "...";
+                errorMsg.innerText = msg;
+            }
+            showLoading(false);
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                editor.value = e.target.result;
+                renderDiagram();
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        function adjustZoom(delta) {
+            currentZoom += delta;
+            // 限制縮放範圍
+            if (currentZoom < 0.1) currentZoom = 0.1;
+            if (currentZoom > 5.0) currentZoom = 5.0; 
+            updateTransform();
+        }
+
+        function resetZoom() {
+            currentZoom = 1;
+            translateX = 0;
+            translateY = 0;
+            updateTransform();
+        }
+
+        function updateTransform() {
+            // 同時應用位移與縮放
+            graphDiv.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentZoom})`;
+        }
+
+        function downloadPNG() {
+            const svg = graphDiv.querySelector('svg');
+            if (!svg) {
+                alert("沒有圖形可以下載！");
+                return;
+            }
+
+            try {
+                const serializer = new XMLSerializer();
+                let source = serializer.serializeToString(svg);
+
+                if(!source.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)){
+                    source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+                }
+                
+                // --- FIX 1: 取得原始尺寸，不受縮放影響 ---
+                // 使用 getBoundingClientRect() 會拿到縮放後的尺寸，導致下載圖片變小
+                // 我們要除以 currentZoom 來還原
+                const rect = svg.getBoundingClientRect();
+                const width = rect.width / currentZoom; 
+                const height = rect.height / currentZoom;
+
+                // 確保 SVG 源碼中有正確的 width/height
+                source = source.replace(/^<svg/, `<svg width="${width}" height="${height}"`);
+
+                // --- FIX 2: 更穩健的樣式注入 ---
+                // 直接尋找 </svg> 標籤，插在它前面，而不是依賴可能不存在的 </style>
+                const fontStyle = `
+                    <style>
+                        text, tspan { font-family: sans-serif !important; fill: black !important; }
+                        .node rect, .node circle, .node polygon, .node path { stroke: black !important; fill: white !important; }
+                        .edgePath .path { stroke: black !important; }
+                        .arrowheadPath { fill: black !important; }
+                    </style>`;
+                
+                // 檢查是否已有 style 標籤 (有的話 append，沒有的話 insert)
+                if (source.includes('</style>')) {
+                    source = source.replace('</style>', '</style>' + fontStyle);
+                } else {
+                    source = source.replace('</svg>', fontStyle + '</svg>');
+                }
+
+                const canvas = document.getElementById('exportCanvas');
+                const ctx = canvas.getContext('2d');
+                
+                // 使用 2 倍解析度
+                const scaleFactor = 2; 
+                
+                canvas.width = width * scaleFactor;
+                canvas.height = height * scaleFactor;
+
+                const img = new Image();
+                const blob = new Blob([source], {type: 'image/svg+xml;charset=utf-8'});
+                const url = URL.createObjectURL(blob);
+
+                img.onload = function() {
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    ctx.scale(scaleFactor, scaleFactor);
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    try {
+                        const a = document.createElement('a');
+                        // 產生可讀性高的檔名
+                        const date = new Date();
+                        const timeStr = `${date.getHours()}${date.getMinutes()}${date.getSeconds()}`;
+                        a.download = `mermaid_chart_${timeStr}.png`;
+                        a.href = canvas.toDataURL('image/png');
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                    } catch (e) {
+                        alert("下載觸發失敗，請右鍵點擊圖片另存新檔。");
+                    }
+                    URL.revokeObjectURL(url);
+                };
+                
+                img.onerror = function() {
+                    alert("圖片轉換失敗。可能是瀏覽器安全性限制所致。");
+                    URL.revokeObjectURL(url);
+                };
+
+                img.src = url;
+
+            } catch (e) {
+                console.error(e);
+                alert("發生未預期的錯誤: " + e.message);
+            }
+        }
+
+        function loadSample(type) {
+            if (type === 'flowchart') {
+                editor.value = `graph TD
+    A[學生] --> B(打開網頁)
+    B --> C{是否已寫好語法?}
+    C -->|是| D[貼上語法]
+    C -->|否| E[上傳文字檔]
+    D --> F[即時預覽]
+    E --> F
+    F --> G[下載圖片]`;
+            } else if (type === 'sequence') {
+                editor.value = `sequenceDiagram
+    autonumber
+    老師->>學生: 請畫出光合作用流程
+    學生->>Mermaid工具: 輸入語法
+    Mermaid工具-->>學生: 產生漂亮的圖表
+    學生->>老師: 交作業 (PNG圖片)
+    老師->>學生: 很棒! 100分!`;
+            }
+            renderDiagram();
+            resetZoom();
+        }
+
+        function showLoading(show) {
+            if(show) loading.classList.remove('hidden');
+            else loading.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
