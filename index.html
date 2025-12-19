@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mermaid 魔法繪圖板 (Fixed)</title>
+    <title>Mermaid 魔法繪圖板 (Final V1.5)</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome for Icons -->
@@ -76,10 +76,8 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* 修正縮放時的容器行為 */
         #graphDiv {
             transform-origin: center center; 
-            /* 預設置中，但在縮放邏輯中會動態調整 */
         }
     </style>
 </head>
@@ -152,9 +150,10 @@
                     <button onclick="adjustZoom(-0.1)" class="p-2 hover:text-brand-blue transition" title="縮小"><i class="fa-solid fa-magnifying-glass-minus fa-lg"></i></button>
                 </div>
                 
-                <button onclick="downloadPNG()" class="bg-brand-blue text-white p-3 rounded-xl shadow-lg hover:bg-blue-600 transition btn-bounce flex flex-col items-center justify-center font-bold">
+                <!-- SVG Download Button (Styled as Primary) -->
+                <button onclick="downloadSVG()" class="bg-brand-blue text-white p-3 rounded-xl shadow-lg hover:bg-blue-600 transition btn-bounce flex flex-col items-center justify-center font-bold" title="下載向量圖 (SVG)">
                     <i class="fa-solid fa-download text-xl mb-1"></i>
-                    <span class="text-xs">PNG</span>
+                    <span class="text-xs">SVG</span>
                 </button>
             </div>
 
@@ -163,9 +162,7 @@
             </div>
 
             <!-- Canvas Container -->
-            <!-- 修正：移除 overflow-auto 改為 overflow-hidden，加入 cursor-grab 以支援滑鼠拖曳 -->
             <div class="flex-1 overflow-hidden preview-pattern flex items-center justify-center p-8 cursor-grab" id="previewContainer">
-                <!-- 修正：移除 transition-transform 避免拖曳時遲滯 -->
                 <div id="graphDiv" class=""></div>
             </div>
             
@@ -183,7 +180,7 @@
         mermaid.initialize({ 
             startOnLoad: false, 
             theme: 'base',
-            securityLevel: 'loose',
+            securityLevel: 'loose', 
             themeVariables: {
                 primaryColor: '#ffffff',
                 primaryTextColor: '#000000',
@@ -194,7 +191,7 @@
                 fontFamily: 'Nunito, "Noto Sans TC", sans-serif',
                 fontSize: '18px' 
             },
-            flowchart: { curve: 'basis', htmlLabels: true },
+            flowchart: { curve: 'basis', htmlLabels: false }, 
         });
 
         window.mermaid = mermaid; 
@@ -268,21 +265,16 @@
 
         // ---------------- Pan & Zoom Event Listeners ----------------
 
-        // 1. Mouse Wheel Zoom
         previewContainer.addEventListener('wheel', (e) => {
             e.preventDefault();
-            // 決定縮放方向
             const delta = e.deltaY > 0 ? -0.1 : 0.1;
             adjustZoom(delta);
         });
 
-        // 2. Mouse Drag Pan
         previewContainer.addEventListener('mousedown', (e) => {
-            // 只允許左鍵 (button 0)
             if (e.button !== 0) return;
             
             isPanning = true;
-            // 計算起始點相對於目前 translate 的位置
             startX = e.clientX - translateX;
             startY = e.clientY - translateY;
             
@@ -293,7 +285,6 @@
             if (!isPanning) return;
             e.preventDefault();
             
-            // 計算新的位移
             translateX = e.clientX - startX;
             translateY = e.clientY - startY;
             
@@ -362,7 +353,6 @@
 
         function adjustZoom(delta) {
             currentZoom += delta;
-            // 限制縮放範圍
             if (currentZoom < 0.1) currentZoom = 0.1;
             if (currentZoom > 5.0) currentZoom = 5.0; 
             updateTransform();
@@ -376,99 +366,83 @@
         }
 
         function updateTransform() {
-            // 同時應用位移與縮放
             graphDiv.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentZoom})`;
         }
 
-        function downloadPNG() {
-            const svg = graphDiv.querySelector('svg');
-            if (!svg) {
+        // ---------------- SVG Export Logic (Completely Rewritten) ----------------
+        // 使用 cloneNode 處理，避免 Regex 字串取代導致的結構損壞
+
+        function getCleanSvgSource() {
+            const originalSvg = graphDiv.querySelector('svg');
+            if (!originalSvg) return null;
+
+            // 1. 複製 DOM 節點，讓我們可以隨意修改而不影響畫面
+            const svgClone = originalSvg.cloneNode(true);
+
+            // 2. 取得原始尺寸 (不受縮放影響)
+            const rect = originalSvg.getBoundingClientRect();
+            const width = rect.width / currentZoom;
+            const height = rect.height / currentZoom;
+
+            // 3. 直接操作 DOM 設定屬性 (比字串取代安全且正確)
+            svgClone.setAttribute("width", width);
+            svgClone.setAttribute("height", height);
+            svgClone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+            
+            // 清除可能影響寬度的 inline style
+            svgClone.style.maxWidth = '';
+            svgClone.style.width = '';
+            svgClone.style.height = '';
+
+            // 4. 注入樣式到 SVG 內部
+            // 檢查是否已有 style 標籤
+            let styleEl = svgClone.querySelector('style');
+            if (!styleEl) {
+                styleEl = document.createElementNS("http://www.w3.org/2000/svg", "style");
+                // 插入到最前面
+                svgClone.insertBefore(styleEl, svgClone.firstChild);
+            }
+
+            // 強制寫入黑色字體與線條樣式
+            const cssContent = `
+                text, tspan { font-family: sans-serif !important; fill: black !important; }
+                .node rect, .node circle, .node polygon, .node path { stroke: black !important; fill: white !important; }
+                .edgePath .path { stroke: black !important; }
+                .arrowheadPath { fill: black !important; }
+            `;
+            
+            // 附加樣式 (保留原本的樣式並疊加)
+            styleEl.textContent += cssContent;
+
+            // 5. 序列化為字串
+            const serializer = new XMLSerializer();
+            const source = serializer.serializeToString(svgClone);
+
+            return { source, width, height };
+        }
+
+        function downloadSVG() {
+            const data = getCleanSvgSource();
+            if (!data) {
                 alert("沒有圖形可以下載！");
                 return;
             }
 
-            try {
-                const serializer = new XMLSerializer();
-                let source = serializer.serializeToString(svg);
+            const blob = new Blob([data.source], {type: 'image/svg+xml;charset=utf-8'});
+            triggerDownload(blob, 'svg');
+        }
 
-                if(!source.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)){
-                    source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
-                }
-                
-                // --- FIX 1: 取得原始尺寸，不受縮放影響 ---
-                // 使用 getBoundingClientRect() 會拿到縮放後的尺寸，導致下載圖片變小
-                // 我們要除以 currentZoom 來還原
-                const rect = svg.getBoundingClientRect();
-                const width = rect.width / currentZoom; 
-                const height = rect.height / currentZoom;
-
-                // 確保 SVG 源碼中有正確的 width/height
-                source = source.replace(/^<svg/, `<svg width="${width}" height="${height}"`);
-
-                // --- FIX 2: 更穩健的樣式注入 ---
-                // 直接尋找 </svg> 標籤，插在它前面，而不是依賴可能不存在的 </style>
-                const fontStyle = `
-                    <style>
-                        text, tspan { font-family: sans-serif !important; fill: black !important; }
-                        .node rect, .node circle, .node polygon, .node path { stroke: black !important; fill: white !important; }
-                        .edgePath .path { stroke: black !important; }
-                        .arrowheadPath { fill: black !important; }
-                    </style>`;
-                
-                // 檢查是否已有 style 標籤 (有的話 append，沒有的話 insert)
-                if (source.includes('</style>')) {
-                    source = source.replace('</style>', '</style>' + fontStyle);
-                } else {
-                    source = source.replace('</svg>', fontStyle + '</svg>');
-                }
-
-                const canvas = document.getElementById('exportCanvas');
-                const ctx = canvas.getContext('2d');
-                
-                // 使用 2 倍解析度
-                const scaleFactor = 2; 
-                
-                canvas.width = width * scaleFactor;
-                canvas.height = height * scaleFactor;
-
-                const img = new Image();
-                const blob = new Blob([source], {type: 'image/svg+xml;charset=utf-8'});
-                const url = URL.createObjectURL(blob);
-
-                img.onload = function() {
-                    ctx.fillStyle = "#ffffff";
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    
-                    ctx.scale(scaleFactor, scaleFactor);
-                    ctx.drawImage(img, 0, 0, width, height);
-
-                    try {
-                        const a = document.createElement('a');
-                        // 產生可讀性高的檔名
-                        const date = new Date();
-                        const timeStr = `${date.getHours()}${date.getMinutes()}${date.getSeconds()}`;
-                        a.download = `mermaid_chart_${timeStr}.png`;
-                        a.href = canvas.toDataURL('image/png');
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                    } catch (e) {
-                        alert("下載觸發失敗，請右鍵點擊圖片另存新檔。");
-                    }
-                    URL.revokeObjectURL(url);
-                };
-                
-                img.onerror = function() {
-                    alert("圖片轉換失敗。可能是瀏覽器安全性限制所致。");
-                    URL.revokeObjectURL(url);
-                };
-
-                img.src = url;
-
-            } catch (e) {
-                console.error(e);
-                alert("發生未預期的錯誤: " + e.message);
-            }
+        function triggerDownload(blob, ext) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const date = new Date();
+            const timeStr = `${date.getHours()}${date.getMinutes()}${date.getSeconds()}`;
+            a.download = `mermaid_chart_${timeStr}.${ext}`;
+            a.href = url;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
 
         function loadSample(type) {
