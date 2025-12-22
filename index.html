@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mermaid 魔法繪圖板 (Final V1.5)</title>
+    <title>Mermaid 魔法繪圖板 (Help V1.6)</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome for Icons -->
@@ -24,6 +24,7 @@
                         'brand-blue': '#4D96FF',
                         'brand-green': '#6BCB77',
                         'brand-red': '#FF6B6B',
+                        'brand-purple': '#A855F7',
                         'brand-bg': '#F0F4F8'
                     }
                 }
@@ -79,6 +80,43 @@
         #graphDiv {
             transform-origin: center center; 
         }
+
+        /* Modal Transitions */
+        .modal {
+            transition: opacity 0.3s ease-in-out;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .modal.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-content {
+            transform: scale(0.95);
+            transition: transform 0.3s ease-in-out;
+        }
+        .modal.active .modal-content {
+            transform: scale(1);
+        }
+
+        /* Table Styles */
+        .syntax-table th, .syntax-table td {
+            border: 1px solid #e2e8f0;
+            padding: 8px;
+            text-align: left;
+        }
+        .syntax-table th {
+            background-color: #f8fafc;
+            color: #475569;
+        }
+        .code-tag {
+            background-color: #f1f5f9;
+            color: #dc2626;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden text-gray-700">
@@ -96,6 +134,11 @@
         </div>
         
         <div class="flex gap-2">
+            <!-- NEW: Help Button -->
+            <button onclick="toggleModal('helpModal')" class="flex items-center gap-2 px-4 py-2 bg-brand-purple text-white rounded-full font-bold shadow-sm hover:bg-purple-600 transition btn-bounce">
+                <i class="fa-solid fa-circle-question"></i> <span class="hidden md:inline">符號說明</span>
+            </button>
+
             <button onclick="loadSample('flowchart')" class="hidden md:flex items-center gap-2 px-4 py-2 bg-brand-yellow text-gray-800 rounded-full font-bold shadow-sm hover:bg-yellow-300 transition btn-bounce">
                 <i class="fa-solid fa-lightbulb"></i> 流程圖範例
             </button>
@@ -106,7 +149,7 @@
     </header>
 
     <!-- Main Content -->
-    <main class="flex-1 flex flex-col md:flex-row overflow-hidden">
+    <main class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
         
         <!-- Left Panel: Editor -->
         <section class="w-full md:w-2/5 flex flex-col bg-white border-r border-gray-200 shadow-xl z-0">
@@ -150,7 +193,7 @@
                     <button onclick="adjustZoom(-0.1)" class="p-2 hover:text-brand-blue transition" title="縮小"><i class="fa-solid fa-magnifying-glass-minus fa-lg"></i></button>
                 </div>
                 
-                <!-- SVG Download Button (Styled as Primary) -->
+                <!-- SVG Download Button -->
                 <button onclick="downloadSVG()" class="bg-brand-blue text-white p-3 rounded-xl shadow-lg hover:bg-blue-600 transition btn-bounce flex flex-col items-center justify-center font-bold" title="下載向量圖 (SVG)">
                     <i class="fa-solid fa-download text-xl mb-1"></i>
                     <span class="text-xs">SVG</span>
@@ -170,6 +213,97 @@
                 <div class="loader"></div>
             </div>
         </section>
+
+        <!-- HELP MODAL -->
+        <div id="helpModal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div class="modal-content bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
+                <!-- Modal Header -->
+                <div class="bg-brand-purple text-white p-4 flex justify-between items-center">
+                    <h2 class="text-xl font-bold"><i class="fa-solid fa-book-open mr-2"></i>Mermaid 語法速查表</h2>
+                    <button onclick="toggleModal('helpModal')" class="hover:bg-purple-600 p-2 rounded-full transition"><i class="fa-solid fa-xmark fa-lg"></i></button>
+                </div>
+                
+                <!-- Modal Tabs -->
+                <div class="flex border-b border-gray-200 bg-gray-50">
+                    <button class="tab-btn px-6 py-3 font-bold text-gray-600 border-b-2 border-transparent hover:bg-gray-100 flex-1 active-tab" onclick="switchTab('flowchart-tab')">
+                        <i class="fa-solid fa-diagram-project mr-2"></i>流程圖 (Flowchart)
+                    </button>
+                    <button class="tab-btn px-6 py-3 font-bold text-gray-600 border-b-2 border-transparent hover:bg-gray-100 flex-1" onclick="switchTab('sequence-tab')">
+                        <i class="fa-solid fa-comments mr-2"></i>時序圖 (Sequence)
+                    </button>
+                </div>
+
+                <!-- Modal Content -->
+                <div class="overflow-y-auto p-6 bg-white flex-1">
+                    
+                    <!-- Flowchart Content -->
+                    <div id="flowchart-tab" class="tab-content">
+                        <div class="mb-4 p-3 bg-yellow-50 text-yellow-800 rounded-lg text-sm">
+                            <i class="fa-solid fa-circle-info mr-1"></i> 宣告方式：第一行請輸入 <span class="code-tag">graph TD</span> (由上往下) 或 <span class="code-tag">graph LR</span> (由左往右)
+                        </div>
+
+                        <h3 class="font-bold text-lg mb-2 text-gray-800 border-l-4 border-brand-purple pl-2">常用節點 (Node)</h3>
+                        <table class="w-full text-sm mb-6 syntax-table">
+                            <thead><tr><th width="30%">語法</th><th>說明</th><th>形狀範例</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="code-tag">[文字]</span></td><td>矩形 (流程)</td><td><i class="fa-regular fa-square mr-1"></i></td></tr>
+                                <tr><td><span class="code-tag">(文字)</span></td><td>圓角矩形 (開始/結束)</td><td><span class="border border-gray-400 rounded-full px-2 py-0.5 text-xs">文字</span></td></tr>
+                                <tr><td><span class="code-tag">((文字))</span></td><td>圓形</td><td><i class="fa-regular fa-circle mr-1"></i></td></tr>
+                                <tr><td><span class="code-tag">{文字}</span></td><td>菱形 (判斷)</td><td><i class="fa-solid fa-diamond mr-1 text-xs"></i></td></tr>
+                                <tr><td><span class="code-tag">[[文字]]</span></td><td>子程序</td><td><i class="fa-regular fa-square-full mr-1"></i></td></tr>
+                            </tbody>
+                        </table>
+
+                        <h3 class="font-bold text-lg mb-2 text-gray-800 border-l-4 border-brand-purple pl-2">連線與箭頭 (Links)</h3>
+                        <table class="w-full text-sm syntax-table">
+                            <thead><tr><th width="30%">語法</th><th>說明</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="code-tag">A --> B</span></td><td>實線箭頭</td></tr>
+                                <tr><td><span class="code-tag">A --- B</span></td><td>實線 (無箭頭)</td></tr>
+                                <tr><td><span class="code-tag">A -.-> B</span></td><td>虛線箭頭</td></tr>
+                                <tr><td><span class="code-tag">A ==> B</span></td><td>粗箭頭 (強調)</td></tr>
+                                <tr><td><span class="code-tag">A -->|是| B</span></td><td>帶文字的箭頭 (簡單寫法)</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Sequence Content -->
+                    <div id="sequence-tab" class="tab-content hidden">
+                        <div class="mb-4 p-3 bg-blue-50 text-blue-800 rounded-lg text-sm">
+                            <i class="fa-solid fa-circle-info mr-1"></i> 宣告方式：第一行請輸入 <span class="code-tag">sequenceDiagram</span>
+                        </div>
+
+                        <h3 class="font-bold text-lg mb-2 text-gray-800 border-l-4 border-brand-blue pl-2">訊息傳遞</h3>
+                        <table class="w-full text-sm mb-6 syntax-table">
+                            <thead><tr><th width="40%">語法</th><th>說明</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="code-tag">A->>B: 文字</span></td><td>實線箭頭 (同步呼叫)</td></tr>
+                                <tr><td><span class="code-tag">B-->>A: 文字</span></td><td>虛線箭頭 (回傳/回應)</td></tr>
+                                <tr><td><span class="code-tag">A->B: 文字</span></td><td>無箭頭實線</td></tr>
+                                <tr><td><span class="code-tag">A-x B: 文字</span></td><td>帶叉叉的箭頭 (非同步/遺失)</td></tr>
+                            </tbody>
+                        </table>
+
+                        <h3 class="font-bold text-lg mb-2 text-gray-800 border-l-4 border-brand-blue pl-2">其他功能</h3>
+                        <table class="w-full text-sm syntax-table">
+                            <thead><tr><th width="40%">語法</th><th>說明</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="code-tag">autonumber</span></td><td>自動編號</td></tr>
+                                <tr><td><span class="code-tag">Note right of A: 文字</span></td><td>在 A 的右側增加註解</td></tr>
+                                <tr><td><span class="code-tag">loop 說明 ... end</span></td><td>迴圈區塊</td></tr>
+                                <tr><td><span class="code-tag">alt 條件 ... else ... end</span></td><td>判斷區塊 (if/else)</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+                
+                <div class="p-4 border-t border-gray-200 bg-gray-50 text-right">
+                    <button onclick="toggleModal('helpModal')" class="px-5 py-2 bg-gray-300 text-gray-700 font-bold rounded-lg hover:bg-gray-400 transition">關閉</button>
+                </div>
+            </div>
+        </div>
+
     </main>
 
     <canvas id="exportCanvas" class="hidden"></canvas>
@@ -238,6 +372,9 @@
 
         window.addEventListener('load', () => {
             editor.value = defaultCode;
+            // Set initial active tab styles
+            switchTab('flowchart-tab');
+            
             if (window.mermaid) {
                 window.onMermaidLoaded();
             }
@@ -262,6 +399,48 @@
                 document.getElementById('copyBtn').innerHTML = originalIcon;
             }, 1500);
         });
+
+        // ---------------- Modal Logic ----------------
+        function toggleModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal.classList.contains('active')) {
+                modal.classList.remove('active');
+            } else {
+                modal.classList.add('active');
+            }
+        }
+
+        function switchTab(tabId) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            // Show selected content
+            document.getElementById(tabId).classList.remove('hidden');
+
+            // Update button styles
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('border-brand-purple', 'text-brand-purple', 'bg-white');
+                btn.classList.add('border-transparent', 'text-gray-600');
+            });
+
+            // Highlight active button (find button that calls this function)
+            // Simpler approach: find based on onclick attribute or id
+            const btns = document.querySelectorAll('.tab-btn');
+            if (tabId === 'flowchart-tab') {
+                btns[0].classList.add('border-brand-purple', 'text-brand-purple', 'bg-white');
+                btns[0].classList.remove('border-transparent', 'text-gray-600');
+            } else {
+                btns[1].classList.add('border-brand-purple', 'text-brand-purple', 'bg-white'); // Use purple for active tab
+                btns[1].classList.remove('border-transparent', 'text-gray-600');
+            }
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('helpModal');
+            if (event.target == modal) {
+                toggleModal('helpModal');
+            }
+        }
 
         // ---------------- Pan & Zoom Event Listeners ----------------
 
@@ -370,40 +549,31 @@
         }
 
         // ---------------- SVG Export Logic (Completely Rewritten) ----------------
-        // 使用 cloneNode 處理，避免 Regex 字串取代導致的結構損壞
 
         function getCleanSvgSource() {
             const originalSvg = graphDiv.querySelector('svg');
             if (!originalSvg) return null;
 
-            // 1. 複製 DOM 節點，讓我們可以隨意修改而不影響畫面
             const svgClone = originalSvg.cloneNode(true);
 
-            // 2. 取得原始尺寸 (不受縮放影響)
             const rect = originalSvg.getBoundingClientRect();
             const width = rect.width / currentZoom;
             const height = rect.height / currentZoom;
 
-            // 3. 直接操作 DOM 設定屬性 (比字串取代安全且正確)
             svgClone.setAttribute("width", width);
             svgClone.setAttribute("height", height);
             svgClone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
             
-            // 清除可能影響寬度的 inline style
             svgClone.style.maxWidth = '';
             svgClone.style.width = '';
             svgClone.style.height = '';
 
-            // 4. 注入樣式到 SVG 內部
-            // 檢查是否已有 style 標籤
             let styleEl = svgClone.querySelector('style');
             if (!styleEl) {
                 styleEl = document.createElementNS("http://www.w3.org/2000/svg", "style");
-                // 插入到最前面
                 svgClone.insertBefore(styleEl, svgClone.firstChild);
             }
 
-            // 強制寫入黑色字體與線條樣式
             const cssContent = `
                 text, tspan { font-family: sans-serif !important; fill: black !important; }
                 .node rect, .node circle, .node polygon, .node path { stroke: black !important; fill: white !important; }
@@ -411,10 +581,8 @@
                 .arrowheadPath { fill: black !important; }
             `;
             
-            // 附加樣式 (保留原本的樣式並疊加)
             styleEl.textContent += cssContent;
 
-            // 5. 序列化為字串
             const serializer = new XMLSerializer();
             const source = serializer.serializeToString(svgClone);
 
