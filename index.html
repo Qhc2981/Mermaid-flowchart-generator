@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mermaid 魔法繪圖板 (Help V1.6)</title>
+    <title>Mermaid 魔法繪圖板 (V1.13)</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome for Icons -->
@@ -25,6 +25,7 @@
                         'brand-green': '#6BCB77',
                         'brand-red': '#FF6B6B',
                         'brand-purple': '#A855F7',
+                        'brand-orange': '#FF9F43', 
                         'brand-bg': '#F0F4F8'
                     }
                 }
@@ -128,22 +129,31 @@
                 <i class="fa-solid fa-shapes"></i>
             </div>
             <div>
-                <h1 class="text-2xl font-bold text-gray-800 tracking-wide">Mermaid <span class="text-brand-blue">魔法繪圖板</span></h1>
+                <h1 class="text-2xl font-bold text-gray-800 tracking-wide">Mermaid <span class="text-brand-blue">魔法繪圖板_v1.13</span></h1>
                 <p class="text-xs text-gray-500 font-bold">簡單、快速、色彩豐富的流程圖工具</p>
             </div>
         </div>
         
         <div class="flex gap-2">
-            <!-- NEW: Help Button -->
+            <!-- Help Button -->
             <button onclick="toggleModal('helpModal')" class="flex items-center gap-2 px-4 py-2 bg-brand-purple text-white rounded-full font-bold shadow-sm hover:bg-purple-600 transition btn-bounce">
                 <i class="fa-solid fa-circle-question"></i> <span class="hidden md:inline">符號說明</span>
             </button>
 
+            <!-- Sample Buttons -->
             <button onclick="loadSample('flowchart')" class="hidden md:flex items-center gap-2 px-4 py-2 bg-brand-yellow text-gray-800 rounded-full font-bold shadow-sm hover:bg-yellow-300 transition btn-bounce">
                 <i class="fa-solid fa-lightbulb"></i> 流程圖範例
             </button>
             <button onclick="loadSample('sequence')" class="hidden md:flex items-center gap-2 px-4 py-2 bg-brand-green text-white rounded-full font-bold shadow-sm hover:bg-green-500 transition btn-bounce">
-                <i class="fa-solid fa-comments"></i> 時序圖範例
+                <i class="fa-solid fa-comments"></i> 序列圖範例
+            </button>
+            <!-- Gantt Button -->
+            <button onclick="loadSample('gantt')" class="hidden md:flex items-center gap-2 px-4 py-2 bg-brand-red text-white rounded-full font-bold shadow-sm hover:bg-red-500 transition btn-bounce">
+                <i class="fa-solid fa-chart-bar"></i> 甘特圖範例
+            </button>
+            <!-- Mindmap Button -->
+            <button onclick="loadSample('mindmap')" class="hidden md:flex items-center gap-2 px-4 py-2 bg-brand-orange text-white rounded-full font-bold shadow-sm hover:bg-orange-500 transition btn-bounce">
+                <i class="fa-solid fa-brain"></i> 心智圖範例
             </button>
         </div>
     </header>
@@ -198,6 +208,12 @@
                     <i class="fa-solid fa-download text-xl mb-1"></i>
                     <span class="text-xs">SVG</span>
                 </button>
+
+                <!-- PNG Download Button -->
+                <button onclick="downloadPNG()" class="bg-white text-gray-600 border border-gray-200 p-3 rounded-xl shadow-lg hover:bg-gray-50 transition btn-bounce flex flex-col items-center justify-center font-bold" title="下載 PNG 圖片">
+                    <i class="fa-solid fa-image text-xl mb-1 text-brand-blue"></i>
+                    <span class="text-xs">PNG</span>
+                </button>
             </div>
 
             <div class="absolute top-4 left-4 z-20 bg-white/80 backdrop-blur px-3 py-1 rounded-full text-sm font-bold text-gray-500 border border-gray-200 pointer-events-none">
@@ -224,12 +240,20 @@
                 </div>
                 
                 <!-- Modal Tabs -->
-                <div class="flex border-b border-gray-200 bg-gray-50">
-                    <button class="tab-btn px-6 py-3 font-bold text-gray-600 border-b-2 border-transparent hover:bg-gray-100 flex-1 active-tab" onclick="switchTab('flowchart-tab')">
-                        <i class="fa-solid fa-diagram-project mr-2"></i>流程圖 (Flowchart)
+                <div class="flex border-b border-gray-200 bg-gray-50 overflow-x-auto">
+                    <button class="tab-btn px-4 md:px-6 py-3 font-bold text-gray-600 border-b-2 border-transparent hover:bg-gray-100 flex-1 whitespace-nowrap active-tab" onclick="switchTab('flowchart-tab', this)">
+                        <i class="fa-solid fa-diagram-project mr-2"></i>流程圖
                     </button>
-                    <button class="tab-btn px-6 py-3 font-bold text-gray-600 border-b-2 border-transparent hover:bg-gray-100 flex-1" onclick="switchTab('sequence-tab')">
-                        <i class="fa-solid fa-comments mr-2"></i>時序圖 (Sequence)
+                    <button class="tab-btn px-4 md:px-6 py-3 font-bold text-gray-600 border-b-2 border-transparent hover:bg-gray-100 flex-1 whitespace-nowrap" onclick="switchTab('sequence-tab', this)">
+                        <i class="fa-solid fa-comments mr-2"></i>序列圖
+                    </button>
+                    <!-- Gantt Tab -->
+                    <button class="tab-btn px-4 md:px-6 py-3 font-bold text-gray-600 border-b-2 border-transparent hover:bg-gray-100 flex-1 whitespace-nowrap" onclick="switchTab('gantt-tab', this)">
+                        <i class="fa-solid fa-chart-bar mr-2"></i>甘特圖
+                    </button>
+                    <!-- Mindmap Tab -->
+                    <button class="tab-btn px-4 md:px-6 py-3 font-bold text-gray-600 border-b-2 border-transparent hover:bg-gray-100 flex-1 whitespace-nowrap" onclick="switchTab('mindmap-tab', this)">
+                        <i class="fa-solid fa-brain mr-2"></i>心智圖
                     </button>
                 </div>
 
@@ -296,6 +320,66 @@
                         </table>
                     </div>
 
+                    <!-- Gantt Content -->
+                    <div id="gantt-tab" class="tab-content hidden">
+                        <div class="mb-4 p-3 bg-red-50 text-red-800 rounded-lg text-sm">
+                            <i class="fa-solid fa-circle-info mr-1"></i> 宣告方式：第一行請輸入 <span class="code-tag">gantt</span>
+                        </div>
+
+                        <h3 class="font-bold text-lg mb-2 text-gray-800 border-l-4 border-brand-red pl-2">基本設定</h3>
+                        <table class="w-full text-sm mb-6 syntax-table">
+                            <thead><tr><th width="40%">語法</th><th>範例</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="code-tag">title 標題</span></td><td>title 專案時程表</td></tr>
+                                <tr><td><span class="code-tag">dateFormat 格式</span></td><td>dateFormat YYYY-MM-DD</td></tr>
+                                <tr><td><span class="code-tag">section 區塊名</span></td><td>section 規劃階段</td></tr>
+                            </tbody>
+                        </table>
+
+                        <h3 class="font-bold text-lg mb-2 text-gray-800 border-l-4 border-brand-red pl-2">任務 (Tasks)</h3>
+                        <p class="text-sm text-gray-600 mb-2">格式：<span class="code-tag">任務名稱 :狀態(可選), ID(可選), 開始時間, 長度</span></p>
+                        <table class="w-full text-sm syntax-table">
+                            <thead><tr><th width="40%">語法</th><th>說明</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="code-tag">開發 :2024-01-01, 10d</span></td><td>一般任務 (10d = 10天)</td></tr>
+                                <tr><td><span class="code-tag">測試 :after a1, 5d</span></td><td>接續任務 (在 id 為 a1 的任務後)</td></tr>
+                                <tr><td><span class="code-tag">會議 :crit, active, 2d</span></td><td>關鍵任務(crit)且進行中(active)</td></tr>
+                                <tr><td><span class="code-tag">里程碑 :milestone, 0d</span></td><td>里程碑 (長度為 0)</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Mindmap Content -->
+                    <div id="mindmap-tab" class="tab-content hidden">
+                        <div class="mb-4 p-3 bg-orange-50 text-orange-800 rounded-lg text-sm">
+                            <i class="fa-solid fa-circle-info mr-1"></i> 宣告方式：第一行請輸入 <span class="code-tag">mindmap</span>
+                        </div>
+
+                        <h3 class="font-bold text-lg mb-2 text-gray-800 border-l-4 border-brand-orange pl-2">結構與縮排</h3>
+                        <p class="text-sm text-gray-600 mb-2">心智圖使用縮排 (空格) 來決定層級關係，不需要箭頭。</p>
+                        <pre class="bg-gray-100 p-3 rounded text-sm font-mono mb-4 text-gray-700">
+mindmap
+  根節點
+    子節點 A
+      孫節點 A1
+    子節點 B
+      ::icon(fa fa-star)
+      孫節點 B1</pre>
+
+                        <h3 class="font-bold text-lg mb-2 text-gray-800 border-l-4 border-brand-orange pl-2">形狀語法</h3>
+                        <table class="w-full text-sm syntax-table">
+                            <thead><tr><th width="40%">語法</th><th>形狀說明</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="code-tag">id[文字]</span></td><td>矩形 (預設)</td></tr>
+                                <tr><td><span class="code-tag">id(文字)</span></td><td>圓角矩形</td></tr>
+                                <tr><td><span class="code-tag">id((文字))</span></td><td>圓形</td></tr>
+                                <tr><td><span class="code-tag">id))文字((</span></td><td>孟加拉鼓形 (Bang)</td></tr>
+                                <tr><td><span class="code-tag">id)文字(</span></td><td>雲朵形</td></tr>
+                                <tr><td><span class="code-tag">id{{文字}}</span></td><td>六邊形</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
                 </div>
                 
                 <div class="p-4 border-t border-gray-200 bg-gray-50 text-right">
@@ -325,7 +409,8 @@
                 fontFamily: 'Nunito, "Noto Sans TC", sans-serif',
                 fontSize: '18px' 
             },
-            flowchart: { curve: 'basis', htmlLabels: false }, 
+            // FIX: Reverted htmlLabels to true and curve to basis to prevent "Could not find a suitable point" crash.
+            flowchart: { curve: 'basis', htmlLabels: true }, 
         });
 
         window.mermaid = mermaid; 
@@ -372,8 +457,9 @@
 
         window.addEventListener('load', () => {
             editor.value = defaultCode;
-            // Set initial active tab styles
-            switchTab('flowchart-tab');
+            // Initialize Tabs (Update: Pass the first button element)
+            const firstTabBtn = document.querySelector('.tab-btn');
+            if(firstTabBtn) switchTab('flowchart-tab', firstTabBtn);
             
             if (window.mermaid) {
                 window.onMermaidLoaded();
@@ -410,31 +496,25 @@
             }
         }
 
-        function switchTab(tabId) {
-            // Hide all tab contents
+        function switchTab(tabId, btnElement) {
+            // Hide all contents
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
             // Show selected content
             document.getElementById(tabId).classList.remove('hidden');
 
-            // Update button styles
+            // Reset all buttons
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.classList.remove('border-brand-purple', 'text-brand-purple', 'bg-white');
                 btn.classList.add('border-transparent', 'text-gray-600');
             });
 
-            // Highlight active button (find button that calls this function)
-            // Simpler approach: find based on onclick attribute or id
-            const btns = document.querySelectorAll('.tab-btn');
-            if (tabId === 'flowchart-tab') {
-                btns[0].classList.add('border-brand-purple', 'text-brand-purple', 'bg-white');
-                btns[0].classList.remove('border-transparent', 'text-gray-600');
-            } else {
-                btns[1].classList.add('border-brand-purple', 'text-brand-purple', 'bg-white'); // Use purple for active tab
-                btns[1].classList.remove('border-transparent', 'text-gray-600');
+            // Activate clicked button
+            if (btnElement) {
+                btnElement.classList.remove('border-transparent', 'text-gray-600');
+                btnElement.classList.add('border-brand-purple', 'text-brand-purple', 'bg-white');
             }
         }
 
-        // Close modal when clicking outside
         window.onclick = function(event) {
             const modal = document.getElementById('helpModal');
             if (event.target == modal) {
@@ -548,7 +628,7 @@
             graphDiv.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentZoom})`;
         }
 
-        // ---------------- SVG Export Logic (Completely Rewritten) ----------------
+        // ---------------- SVG Export Logic ----------------
 
         function getCleanSvgSource() {
             const originalSvg = graphDiv.querySelector('svg');
@@ -574,11 +654,14 @@
                 svgClone.insertBefore(styleEl, svgClone.firstChild);
             }
 
+            // Updated CSS to include HTML label styles for PNG export
             const cssContent = `
                 text, tspan { font-family: sans-serif !important; fill: black !important; }
                 .node rect, .node circle, .node polygon, .node path { stroke: black !important; fill: white !important; }
                 .edgePath .path { stroke: black !important; }
                 .arrowheadPath { fill: black !important; }
+                /* Ensure HTML labels in foreignObject are visible in PNG */
+                div, p, span { font-family: sans-serif !important; color: black !important; text-align: center; }
             `;
             
             styleEl.textContent += cssContent;
@@ -598,6 +681,71 @@
 
             const blob = new Blob([data.source], {type: 'image/svg+xml;charset=utf-8'});
             triggerDownload(blob, 'svg');
+        }
+
+        // NEW: PNG Download Function with Dynamic Resolution
+        function downloadPNG() {
+            const data = getCleanSvgSource();
+            if (!data) {
+                alert("沒有圖形可以下載！");
+                return;
+            }
+
+            const canvas = document.getElementById('exportCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // --- 畫質優化邏輯 ---
+            // 預設給予 8 倍高解析度 (Ultra-Res)
+            // 對於大圖，會自動限制最大邊長，避免 Canvas 記憶體溢出
+            const baseScale = 8;
+            const maxSide = 25000; // 限制最大邊長為 25000px
+            
+            let scaleFactor = baseScale;
+            
+            // 如果寬或高乘上倍率後超過限制，則縮小倍率
+            if (data.width * scaleFactor > maxSide || data.height * scaleFactor > maxSide) {
+                scaleFactor = Math.min(maxSide / data.width, maxSide / data.height);
+            }
+            
+            // 確保倍率不低於 1
+            if (scaleFactor < 1) scaleFactor = 1;
+
+            canvas.width = Math.ceil(data.width * scaleFactor);
+            canvas.height = Math.ceil(data.height * scaleFactor);
+
+            const img = new Image();
+            
+            // 使用 Base64 编码防止中文乱码
+            const svg64 = btoa(unescape(encodeURIComponent(data.source)));
+            const b64Start = 'data:image/svg+xml;base64,';
+            const image64 = b64Start + svg64;
+
+            img.onload = function() {
+                // 清空畫布並填充白色背景
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // 啟用平滑縮放演算法
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                
+                ctx.scale(scaleFactor, scaleFactor);
+                ctx.drawImage(img, 0, 0, data.width, data.height);
+
+                try {
+                    canvas.toBlob(function(blob) {
+                        triggerDownload(blob, 'png');
+                    });
+                } catch (e) {
+                    alert("PNG 轉換失敗。請嘗試使用 'SVG' 下載按鈕。");
+                }
+            };
+            
+            img.onerror = function() {
+                alert("圖片轉換失敗 (安全性限制)。\n\n請嘗試檢查語法或使用 SVG 下載。");
+            };
+
+            img.src = image64;
         }
 
         function triggerDownload(blob, ext) {
@@ -631,6 +779,37 @@
     Mermaid工具-->>學生: 產生漂亮的圖表
     學生->>老師: 交作業 (PNG圖片)
     老師->>學生: 很棒! 100分!`;
+            } else if (type === 'gantt') {
+                editor.value = `gantt
+    title 專案開發時程表
+    dateFormat  YYYY-MM-DD
+    section 規劃階段
+    需求訪談        :a1, 2024-01-01, 3d
+    系統分析        :after a1, 5d
+    section 開發階段
+    資料庫設計      :2024-01-09, 3d
+    前端程式        :2024-01-12, 10d
+    後端API         :2024-01-12, 12d
+    section 測試階段
+    整合測試        :2024-01-25, 5d
+    驗收上線        :milestone, 2024-01-31, 0d`;
+            } else if (type === 'mindmap') {
+                editor.value = `mindmap
+  root((心智圖中心))
+    基本概念
+      節點
+      連線
+    應用場景
+      腦力激盪
+      筆記整理
+      專案規劃
+    優點
+      ::icon(fa fa-check-circle)
+      結構清晰
+      易於擴展
+    Mermaid
+      簡單語法
+      自動排版`;
             }
             renderDiagram();
             resetZoom();
